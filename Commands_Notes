@@ -1,0 +1,34 @@
+All commands are after [-->] and the notes and headlines are before it.
+
+1. Uninstall Splunk Forwarder	
+STEPS	COMMANDS
+1.1 Become sudo.	--> sudo -s
+1.2 Identify old Splunk Forwarder installer location ($SPLUNK_HOME) -->	locate --regex "splunk(forwarder)?/var/log/splunk/splunkd.log$" | awk -F "/var" '{print $1}'
+1.3 Stop Splunk Forwarder service	--> $SPLUNK_HOME/bin/splunk stop (Eg run /opt/splunkforwarder/bin/splunk stop if $splunk_home=/opt/splunkforwarder/)
+1.4 Remove the old Splunk forwarder installation directory ($SPLUNK_HOME) -->	rm -rf /$SPLUNK_HOME
+1.5 Kill any lingering Splunk process -->	kill -9 `ps -ef | grep splunk | grep -v grep | awk '{print $2;}'`
+	
+2. Install 9.1.2 Splunk Forwarder	
+STEPS	COMMANDS
+2.1 Become sudo if not already. -->	sudo -s
+2.2 Create the Splunk user and group. So that /home/svc_splunk/ is created. -->	useradd -u svc_splunk                                     
+	--> groupadd svc_splunk
+2.3 Copy the splunkforwarder-9.1.2-b6b9c8185839-Linux-x86_64.tgz file to /home/svc_splunk/ 	Use Winscp
+2.4 Navigate to /opt/ so that splunk forwarder is installed in /opt/splunkforwarder	cd /opt/
+2.5 Install splunk forwarder	--> tar -xvzf /home/svc_splunk/splunkforwarder-9.1.2-b6b9c8185839-Linux-x86_64.tgz
+2.6 Change the permissions/ownership of splunk -->	chown -R svc_splunk:svc_splunk /opt/splunkforwarder/
+	--> chmod -R 775 /opt/splunkforwarder/
+2.7 switch to svc_splunk -->	su svc_splunk
+2.8 Start Splunk Forwarder -->	./splunkforwarder/bin/splunk start --accept-license --answer-yes --no-prompt
+2.9 Set admin username/password -->	echo "USERNAME=admin" > ./splunkforwarder/etc/system/local/user-seed.conf
+	--> echo "PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20)" >> ./splunkforwarder/etc/system/local/user-seed.conf
+2.10 Setup Deployment server config	--> echo "[target-broker:deploymentServer]" > ./splunkforwarder/etc/system/local/deploymentclient.conf
+	--> echo "targetUri = $Deployment_Server:8089" >> ./splunkforwarder/etc/system/local/deploymentclient.conf
+2.11 Stop splunk	--> ./splunkforwarder/bin/splunk stop
+2.12 Switch to sudo -->	exit 
+2.13 Setup Splunk as boot user	--> ./splunkforwarder/bin/splunk enable boot-start -systemd-managed 1 -create-polkit-rules 1 -user svc_splunk
+2.14 Hit y to agree and continue -->	y
+2.15 Change the permissions/ownership	--> chown -R svc_splunk:svc_splunk /opt/splunkforwarder/
+	--> chmod -R 775 /opt/splunkforwarder/
+2.16 switch to svc_splunk	--> su svc_splunk
+2.17 start Splunk with svc_splunk	--> ./splunkforwarder/bin/splunk start
